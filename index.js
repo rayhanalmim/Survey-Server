@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const app = express();
 const port = process.env.PORT || 5000;
 
+const stripe = require("stripe")('sk_test_51OEnfwEKCviqmDKyGvNejduojyz7gGGaSNsgAYpLbIHo4YyC0qKaxo7lbJZOVs8nU1pzYL1TtCdLmF4HlpmBSycY00vTAdpl3R');
+
 // hfguIfTfUMDQCkF6
 // surveySphere
 
@@ -44,6 +46,7 @@ db.once('open', () => {
 
   const surveyCollection = mongoose.model('survey', new mongoose.Schema({}, { strict: false }));
   const userCollenction = mongoose.model('users', new mongoose.Schema({}, { strict: false }));
+  const paymentCollection = mongoose.model('payments', new mongoose.Schema({}, { strict: false }));
 
   // const surveyCollection = mongoose.model('survey', surveySchema);
 
@@ -52,6 +55,39 @@ db.once('open', () => {
     const result = await surveyCollection.find();
     res.send(result)
   })
+
+  // ------------------------------paymentTokenCreate------------------------------
+  app.post('/create-payment-intent', async (req, res)=>{
+    const {price} = req.body;
+    const amount = parseInt(price*100);
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount : amount,
+      currency: 'usd',
+      payment_method_types: [
+        'card'
+      ]
+    })
+    res.send({
+      clientSecret: paymentIntent.client_secret,
+    })
+  })
+
+  // -------------------------------------confirmPayment---------------------------------------------
+
+  app.post('/payment', async (req,res)=>{
+    const paymentInfo = req.body;
+    console.log(paymentInfo)
+    const userInfo = paymentInfo.email;
+    const result = await paymentCollection.create(paymentInfo);
+    
+    const update = await userCollenction.updateOne(
+      { email : userInfo },
+      { $set: { role: 'proUser' } },
+    );
+    res.send({result, update})
+
+  })
+
 
   // -------------------------------like----------------------------
   app.post('/likes', async(req,res)=>{
