@@ -64,9 +64,11 @@ db.once('open', () => {
     if(value === 'true'){
       console.log('from true', value)
       console.log(survey.like)
+
       if (survey.likesBy.includes(user)) {
         return res.send('already liked')
       }
+
       const result = await surveyCollection.updateOne(
         { _id: new Object(id) },
         {
@@ -74,6 +76,16 @@ db.once('open', () => {
           $push: { likesBy: user},
         }
       );
+      if (survey.dislikesBy.includes(user)) {
+        console.log('like added dislike delete')
+        await surveyCollection.updateOne(
+          { _id: new Object(id) },
+          {
+            $inc: { 'dislike': -1 },
+            $pull: { dislikesBy: user},
+          }
+        );
+      }
       return res.send(result)
     }
 
@@ -87,6 +99,7 @@ db.once('open', () => {
           $pull: { likesBy: user},
         }
       );
+      
       return res.send(result)
     }
 
@@ -94,6 +107,86 @@ db.once('open', () => {
 
     res.send('data');
   })
+ 
+
+  // ----------------------------------------disLike----------------------------------------
+
+  app.post('/dislike', async(req,res)=>{
+    const user = req.query.user;
+    const value = req.query.value;
+    const id = req.query.id;
+    const survey = await surveyCollection.findById(id)
+    console.log(value)
+
+    if(value === 'true'){
+      console.log('true blog: ', value)
+
+      if (survey.dislikesBy.includes(user)) {
+        return res.send('already disliked')
+      }
+      
+      const result = await surveyCollection.updateOne(
+        { _id: new Object(id) },
+        {
+          $inc: { 'dislike': 1 },
+          $push: { dislikesBy: user},
+        }
+      );
+
+      if (survey.likesBy.includes(user)) {
+        console.log('dislike added like delete')
+        await surveyCollection.updateOne(
+          { _id: new Object(id) },
+          {
+            $inc: { 'like': -1 },
+            $pull: { likesBy: user},
+          }
+        );
+      }
+
+      return res.send(result)
+    }
+
+    if(value === 'false'){
+
+      console.log('from false',value, user)
+      
+
+       const result = await surveyCollection.updateOne(
+        { _id: new Object(id) },
+        {
+          $inc: { 'dislike': -1 },
+          $pull: { dislikesBy: user},
+        }
+      );
+      return res.send(result)
+    }
+
+
+
+    res.send('data');
+  })
+
+  // ------------------------------------------disLikeEnd------------------------------------
+
+  // ------------------------------commentStart---------------------------------
+
+  app.post('/comment', async(req, res)=>{
+    const userCommnet = req.body;
+    const id = req.query.id;
+
+    const result = await surveyCollection.updateOne(
+      { _id: new Object(id) },
+      {
+        $push: { comment: userCommnet},
+      }
+    );
+
+    console.log(userCommnet, id)
+    res.send(result)
+  })
+
+  // ----------------------------------------commentEnd----------------------------------------
 
   app.post('/users', async (req, res) => {
     const user = req.body;
