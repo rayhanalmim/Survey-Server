@@ -47,6 +47,7 @@ db.once('open', () => {
   const surveyCollection = mongoose.model('survey', new mongoose.Schema({}, { strict: false }));
   const userCollenction = mongoose.model('users', new mongoose.Schema({}, { strict: false }));
   const paymentCollection = mongoose.model('payments', new mongoose.Schema({}, { strict: false }));
+  const responseCollection = mongoose.model('response', new mongoose.Schema({}, { strict: false }));
 
   // const surveyCollection = mongoose.model('survey', surveySchema);
 
@@ -54,6 +55,35 @@ db.once('open', () => {
   app.get('/survey', async (req, res) => {
     const result = await surveyCollection.find();
     res.send(result)
+  })
+
+  // --------------------------------userWiseSurveyCollection--------------------------------
+  app.get('/userwisesurver', async (req, res)=>{
+    const email = req.query.email;
+    const result = await surveyCollection.find({ surveyor: email })
+    res.send(result)
+  })
+
+  // --------------------------------surveyResponseCollection----------------------------------
+
+  app.post('/surveyres', async (req, res)=>{
+    const surveyRes = req.body;
+    const result = await responseCollection.create(surveyRes);
+    res.send(result)
+  })
+
+  app.get('/surveyres', async (req, res)=>{
+    const email = req.query.email;
+    const result = await responseCollection.find({surveyor: email});
+    res.send(result)
+  })
+
+  // -----------------------------------------------------DashboardApi------------------------------------------------
+
+  app.post('/createsurvey', async(req, res)=>{
+    const data = req.body;
+    const result = await surveyCollection.create(data)    
+    res.send(result);
   })
 
   // ------------------------------paymentTokenCreate------------------------------
@@ -76,7 +106,6 @@ db.once('open', () => {
 
   app.post('/payment', async (req,res)=>{
     const paymentInfo = req.body;
-    console.log(paymentInfo)
     const userInfo = paymentInfo.email;
     const result = await paymentCollection.create(paymentInfo);
     
@@ -88,6 +117,13 @@ db.once('open', () => {
 
   })
 
+  // -------------------------userRole------------------------------
+  app.get('/role', async (req, res)=>{
+    const email = req.query.user;
+    const result = await userCollenction.findOne({email: email});
+    res.send(result);
+  })
+
 
   // -------------------------------like----------------------------
   app.post('/likes', async(req,res)=>{
@@ -95,11 +131,9 @@ db.once('open', () => {
     const value = req.query.value;
     const id = req.query.id;
     const survey = await surveyCollection.findById(id)
-    console.log(value)
 
     if(value === 'true'){
       console.log('from true', value)
-      console.log(survey.like)
 
       if (survey.likesBy.includes(user)) {
         return res.send('already liked')
@@ -113,7 +147,6 @@ db.once('open', () => {
         }
       );
       if (survey.dislikesBy.includes(user)) {
-        console.log('like added dislike delete')
         await surveyCollection.updateOne(
           { _id: new Object(id) },
           {
@@ -126,7 +159,6 @@ db.once('open', () => {
     }
 
     if(value === 'false'){
-      console.log('from false',value, user)
 
        const result = await surveyCollection.updateOne(
         { _id: new Object(id) },
@@ -152,10 +184,8 @@ db.once('open', () => {
     const value = req.query.value;
     const id = req.query.id;
     const survey = await surveyCollection.findById(id)
-    console.log(value)
 
     if(value === 'true'){
-      console.log('true blog: ', value)
 
       if (survey.dislikesBy.includes(user)) {
         return res.send('already disliked')
@@ -170,7 +200,6 @@ db.once('open', () => {
       );
 
       if (survey.likesBy.includes(user)) {
-        console.log('dislike added like delete')
         await surveyCollection.updateOne(
           { _id: new Object(id) },
           {
@@ -185,7 +214,6 @@ db.once('open', () => {
 
     if(value === 'false'){
 
-      console.log('from false',value, user)
       
 
        const result = await surveyCollection.updateOne(
@@ -218,7 +246,6 @@ db.once('open', () => {
       }
     );
 
-    console.log(userCommnet, id)
     res.send(result)
   })
 
@@ -226,11 +253,9 @@ db.once('open', () => {
 
   app.post('/users', async (req, res) => {
     const user = req.body;
-    console.log(user)
     const email = user.email;
     const query = { email: email };
     const isExists = await userCollenction.findOne(query);
-    console.log(isExists)
 
     if (isExists) {
       return res.send({ massege: 'user already exists' });
@@ -242,7 +267,6 @@ db.once('open', () => {
   app.get('/details/:id', async (req, res) => {
    
     const id = req.params.id;
-    console.log(id);
     const query = { _id: new Object(id) };
     const result = await surveyCollection.findOne(query);
     res.send(result)
@@ -255,7 +279,6 @@ db.once('open', () => {
     const id = req.query.surveyId;
 
     const survey = await surveyCollection.findById(id)
-    console.log(survey)
 
     if (!survey) {
       return res.status(404).json({ message: 'Survey not found' });
@@ -267,7 +290,6 @@ db.once('open', () => {
     if (vote === 'yes') {
       totalVote = survey.vote.yes + 1;
       survey.voted.push(email)
-      console.log(survey)
 
       const result = await surveyCollection.updateOne(
         { _id: new Object(id) },
@@ -282,7 +304,6 @@ db.once('open', () => {
     if (vote === 'no') {
       totalVote = survey.vote.no + 1;
       survey.voted.push(email)
-      console.log(survey)
 
       const result = await surveyCollection.updateOne(
         { _id: new Object(id) },
@@ -294,7 +315,6 @@ db.once('open', () => {
       return res.send(result)
     }
 
-    console.log(email, vote, id);
     res.send('num')
   })
 
