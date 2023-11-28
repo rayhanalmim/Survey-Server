@@ -57,6 +57,69 @@ db.once('open', () => {
     res.send(result)
   })
 
+  // ---------------------allUserInfo-------------------------
+
+  app.get('/allActiveUser', async (req, res)=>{
+    const result = await userCollenction.find()
+    console.log(result)
+    res.send(result)
+  })
+
+  // ----------------------paymentInfo---------------------------
+  app.get('/paymentData', async (req, res)=>{
+    const result = await paymentCollection.find()
+    console.log(result)
+    res.send(result)
+  })
+
+  // ------------------------AllServeyRes--------------------------------
+
+  app.get('/allserveyresponse', async (req, res)=>{
+    const result = await responseCollection.find()
+    console.log(result)
+    res.send(result)
+  })
+
+  // ------------------deleteSurvey----------------------------
+
+  app.delete('/deleteSurvey', async (req, res)=>{
+    const id = req.query.id;
+    console.log(id)
+    const result = await surveyCollection.deleteOne({ _id: new Object(id)});
+    res.send(result)
+  })
+
+  // ------------------------------------updateSurvey------------------------------
+  app.patch('/updateSurvey', async(req, res)=>{
+    const id = req.query.id;
+    const data = req.body;
+    console.log(id, data)
+
+    const result = await surveyCollection.updateOne(
+      { _id: new Object(id) },
+      { $set: { category: data.category, description: data.description, questionOne: data.questionOne, title: data.title } },
+    );
+
+    res.send(result)
+  })
+
+  // --------------------------------userFeedback-------------------------------------
+
+  app.post('/feedback', async (req, res)=>{
+    const id = req.query.id;
+    const feedbackReport = req.body;
+    console.log(id, feedbackReport)
+
+    const update = await surveyCollection.updateOne(
+      { _id: new Object(id) },
+      {
+        $push: { feedback: feedbackReport},
+      },
+    );
+
+    res.send(update);
+  })
+
   // --------------------------------userWiseSurveyCollection--------------------------------
   app.get('/userwisesurver', async (req, res)=>{
     const email = req.query.email;
