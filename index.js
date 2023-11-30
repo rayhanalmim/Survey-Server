@@ -1,19 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const app = express();
 require('dotenv').config()
 const port = process.env.PORT || 5000;
 
 const stripe = require("stripe")(`${process.env.STRIPE}`);
 
-console.log(process.env.SECRET)
-console.log(process.env.ID)
-console.log(process.env.PASS)
-console.log(process.env.STRIPE)
 
-
-app.use(cors())
+app.use(cors({
+  origin: ['http://localhost:5173','https://meek-dango-f0d88f.netlify.app'],
+  credentials: true
+}))
+app.use(cookieParser());
 app.use(express.json())
 
 const uri = `mongodb+srv://${process.env.ID}:${process.env.PASS}@cluster0.tdvw5wt.mongodb.net/surverSp?retryWrites=true&w=majority`;
@@ -53,9 +54,44 @@ db.once('open', () => {
   const paymentCollection = mongoose.model('payments', new mongoose.Schema({}, { strict: false }));
   const responseCollection = mongoose.model('response', new mongoose.Schema({}, { strict: false }));
 
-  // const surveyCollection = mongoose.model('survey', surveySchema);
+    // ------------------------middleWare----------------------------
 
-  // ---------------------------------------
+    const verifyToken = async (req, res, next) => {
+      const token = req.cookies?.token;
+      if (!token) {
+        return res.status(401).send({ message: 'unauthorized access' })
+      }
+      jwt.verify(token, process.env.SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(402).send({ message: 'unauthorized access' })
+        }
+        req.user = decoded;
+        next();
+      })
+    }
+
+   // --------------------------jwt-----------------------------------
+   app.post('/jwt', async (req, res) => {
+    const user = req.body;
+    const token = jwt.sign(user, process.env.SECRET, {
+      expiresIn: '3h'
+    });
+
+    res
+      .cookie('token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+      })
+      .send({ success: true })
+  })
+
+  // --------------------logOutToken------------------
+
+  app.post('/logout', async (req, res) => {
+    const user = req.body;
+    res.clearCookie('token', { maxAge: 0 }).send({ success: true });
+  })
 
   // Routes and other configurations...
   app.get('/survey', async (req, res) => {
@@ -85,14 +121,21 @@ db.once('open', () => {
     res.send(result)
   })
 
-  // ----------------------------------------unpublish-------------------------------------
+  // ----------------------------------------unpublishAndPublish-------------------------------------
   app.put('/unpublished', async (req, res) => {
     const id = req.query.id;
     const data = req.body;
-    console.log(id, data)
     const result = await surveyCollection.updateOne(
       { _id: new Object(id) },
       { $set: { status: 'unpublish', adminFeedback: data.report } },
+    );
+    res.send(result)
+  })
+  app.put('/published', async (req, res) => {
+    const id = req.query.id;
+    const result = await surveyCollection.updateOne(
+      { _id: new Object(id) },
+      { $set: { status: 'publish' } },
     );
     res.send(result)
   })
@@ -109,15 +152,14 @@ db.once('open', () => {
 
   // ---------------------allUserInfo-------------------------
 
-  app.get('/allActiveUser', async (req, res) => {
+  app.get('/allActiveUser', verifyToken, async (req, res) => {
     const result = await userCollenction.find()
     res.send(result)
   })
 
   // ----------------------paymentInfo---------------------------
-  app.get('/paymentData', async (req, res) => {
+  app.get('/paymentData', verifyToken, async (req, res) => {
     const result = await paymentCollection.find()
-    console.log(result)
     res.send(result)
   })
 
@@ -133,7 +175,6 @@ db.once('open', () => {
 
   app.delete('/deleteSurvey', async (req, res) => {
     const id = req.query.id;
-    console.log(id)
     const result = await surveyCollection.deleteOne({ _id: new Object(id) });
     res.send(result)
   })
@@ -142,7 +183,6 @@ db.once('open', () => {
   app.patch('/updateSurvey', async (req, res) => {
     const id = req.query.id;
     const data = req.body;
-    console.log(id, data)
 
     const result = await surveyCollection.updateOne(
       { _id: new Object(id) },
@@ -157,7 +197,6 @@ db.once('open', () => {
   app.post('/feedback', async (req, res) => {
     const id = req.query.id;
     const feedbackReport = req.body;
-    console.log(id, feedbackReport)
 
     const update = await surveyCollection.updateOne(
       { _id: new Object(id) },
@@ -170,7 +209,7 @@ db.once('open', () => {
   })
 
   // --------------------------------userWiseSurveyCollection--------------------------------
-  app.get('/userwisesurver', async (req, res) => {
+  app.get('/userwisesurver', verifyToken, async (req, res) => {
     const email = req.query.email;
     const result = await surveyCollection.find({ surveyor: email })
     res.send(result)
