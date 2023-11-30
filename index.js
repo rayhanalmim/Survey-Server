@@ -93,7 +93,7 @@ db.once('open', () => {
     res.clearCookie('token', { maxAge: 0 }).send({ success: true });
   })
 
-  // Routes and other configurations...
+
   app.get('/survey', async (req, res) => {
     const result = await surveyCollection.find();
     res.send(result)
@@ -112,10 +112,10 @@ db.once('open', () => {
         }
       },
       {
-        $sort: { voteSum: -1 }  // Sort in descending order based on the sum of yes and no
+        $sort: { voteSum: -1 }  
       },
       {
-        $limit: 6  // Limit the result to the top 6 surveys
+        $limit: 6  
       }
     ]);
     res.send(result)
